@@ -43,7 +43,6 @@
     </style>
 </head>
 <body>
-
 <h2 style="text-align: center;">To-Do List</h2>
 
 <table id="todoList">
@@ -65,40 +64,73 @@
 </div>
 
 <script>
-    let items = [];
-    let nextId = 1;
-
-    function renderList() {
-        const listBody = document.getElementById('listBody');
-        listBody.innerHTML = '';
-
-        items.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${item.text}</td>
-                <td><button onclick="removeItem(${index})">Remove</button></td>
-            `;
-            listBody.appendChild(row);
-        });
-    }
-
-    function addItem() {
+    async function addItem() {
         const newItemInput = document.getElementById('newItem');
         const newItemText = newItemInput.value.trim();
 
         if (newItemText) {
-            items.push({ id: nextId++, text: newItemText });
-            newItemInput.value = '';
-            renderList();
+            try {
+                const response = await fetch('/api/items', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: newItemText })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    const listBody = document.getElementById('listBody');
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${data.id}</td>
+                        <td><input type="text" value="${data.text}" onchange="editItem(${data.id}, this.value)"></td>
+                        <td><button class="delete-btn" onclick="deleteItem(${data.id})">×</button></td>
+                    `;
+                    listBody.appendChild(row);
+                    newItemInput.value = '';
+                } else {
+                    alert('Error adding item');
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                alert('Error adding item');
+            }
         }
     }
 
-    function removeItem(index) {
-        items.splice(index, 1);
-        renderList();
+    async function deleteItem(id) {
+        try {
+            const response = await fetch(`/api/items/${id}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                const row = document.querySelector(`button[onclick="deleteItem(${id})"]`).closest('tr');
+                if (row) row.remove();
+            } else {
+                alert('Error deleting item');
+            }
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Error deleting item');
+        }
+    }
+
+    async function editItem(id, text) {
+        try {
+            const response = await fetch(`/api/items/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+            if (response.ok) {
+                const input = document.querySelector(`input[onchange="editItem(${id}, this.value)"]`);
+                if (input) input.value = text;
+            } else {
+                alert('Error updating item');
+            }
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Error updating item');
+        }
     }
 </script>
-
 </body>
 </html>
